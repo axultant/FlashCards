@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8"/>
@@ -112,22 +112,27 @@
     .deck-subtitle p{font-size:.82rem;color:var(--muted);text-align:center}
 
     /* Card */
-    .card-scene{perspective:1200px;width:100%;max-width:520px;
+    .card-scene{perspective:1200px;-webkit-perspective:1200px;width:100%;max-width:520px;
       height:clamp(240px,44vw,340px);cursor:pointer;touch-action:pan-y}
     @media(max-width:430px){.card-scene{height:clamp(220px,55vw,280px)}}
-    .card{position:relative;width:100%;height:100%;transform-style:preserve-3d;
+    .card{position:relative;width:100%;height:100%;
+      transform-style:preserve-3d;-webkit-transform-style:preserve-3d;
       transition:transform .65s cubic-bezier(.4,0,.2,1);border-radius:22px;will-change:transform}
     .card.flipped{transform:rotateY(180deg)}
-    .card-face{position:absolute;inset:0;border-radius:22px;backface-visibility:hidden;
-      -webkit-backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;
+    .card-face{position:absolute;inset:0;border-radius:22px;
+      backface-visibility:hidden;-webkit-backface-visibility:hidden;
+      transform:translateZ(0);-webkit-transform:translateZ(0);
+      display:flex;flex-direction:column;align-items:center;
       justify-content:center;padding:clamp(20px,5vw,36px);border:1px solid rgba(255,255,255,0.08);overflow:hidden}
     .card-front{background:linear-gradient(145deg,#1a1060,#2d1580,#1a0a6b);
       box-shadow:0 20px 60px rgba(0,0,0,.5),0 0 0 1px rgba(124,90,246,.15),
-        inset 0 1px 0 rgba(255,255,255,.1),0 0 50px rgba(124,90,246,.18)}
+        inset 0 1px 0 rgba(255,255,255,.1),0 0 50px rgba(124,90,246,.18);
+      transform:rotateY(0deg) translateZ(1px)}
     .card-front .card-badge{background:rgba(124,90,246,.25);color:#b8a4ff;border:1px solid rgba(124,90,246,.3)}
     .card-back{background:linear-gradient(145deg,#0a3350,#0d5c6e,#062d44);
       box-shadow:0 20px 60px rgba(0,0,0,.5),0 0 0 1px rgba(56,194,212,.15),
-        inset 0 1px 0 rgba(255,255,255,.1),0 0 50px rgba(56,194,212,.18);transform:rotateY(180deg)}
+        inset 0 1px 0 rgba(255,255,255,.1),0 0 50px rgba(56,194,212,.18);
+      transform:rotateY(180deg) translateZ(1px)}
     .card-back .card-badge{background:rgba(56,194,212,.2);color:#7de8f5;border:1px solid rgba(56,194,212,.3)}
     .orb{position:absolute;border-radius:50%;filter:blur(40px);pointer-events:none}
     .card-front .orb{width:160px;height:160px;background:rgba(124,90,246,.3);bottom:-40px;right:-40px}
