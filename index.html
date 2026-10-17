@@ -1,0 +1,566 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="theme-color" content="#0d0f1a"/>
+  <title>FlashCards</title>
+  <meta name="description" content="Флеш-карточки с загрузкой JSON"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+    :root{
+      --bg:#0d0f1a;--accent:#7c5af6;--accent2:#38c2d4;
+      --text:#f0f2ff;--muted:#8b92c4;--border:rgba(255,255,255,0.07);
+      --glow:rgba(124,90,246,0.35);--glow2:rgba(56,194,212,0.25);
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    html{height:100%;-webkit-text-size-adjust:100%}
+    body{min-height:100%;font-family:"Inter",sans-serif;background:var(--bg);color:var(--text);
+      overflow-x:hidden;overscroll-behavior:none}
+    body::before{content:"";position:fixed;inset:0;background:
+      radial-gradient(ellipse 80% 50% at 20% 20%,rgba(124,90,246,0.12) 0%,transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 80%,rgba(56,194,212,0.10) 0%,transparent 60%);
+      pointer-events:none;z-index:0}
+    .app{position:relative;z-index:1;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
+
+    /* ── HEADER ── */
+    header{display:flex;align-items:center;justify-content:space-between;
+      padding:calc(12px + var(--safe-top)) 20px 12px;
+      border-bottom:1px solid var(--border);background:rgba(13,15,26,0.8);
+      backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+      position:sticky;top:0;z-index:10}
+    .logo{display:flex;align-items:center;gap:8px;font-size:1.1rem;font-weight:700;letter-spacing:-.02em}
+    .logo-icon{width:30px;height:30px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+      border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.85rem;
+      box-shadow:0 0 14px var(--glow)}
+    .header-right{display:flex;align-items:center;gap:10px}
+    .progress-wrap{display:flex;align-items:center;gap:8px}
+    .progress-bar{width:100px;height:4px;background:rgba(255,255,255,0.08);border-radius:10px;overflow:hidden}
+    @media(min-width:480px){.progress-bar{width:140px}}
+    .progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));
+      border-radius:10px;transition:width .5s cubic-bezier(.4,0,.2,1);box-shadow:0 0 8px var(--glow)}
+    .progress-text{font-size:.72rem;color:var(--muted);font-weight:600;white-space:nowrap}
+    #deckName{font-size:.72rem;color:var(--muted);font-weight:500;max-width:90px;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:none}
+    @media(min-width:480px){#deckName{max-width:160px}}
+    .btn-load-new{display:none;align-items:center;gap:5px;padding:7px 12px;border-radius:10px;
+      background:rgba(255,255,255,0.06);color:var(--muted);border:1px solid var(--border);
+      cursor:pointer;font-family:"Inter",sans-serif;font-size:.72rem;font-weight:600;
+      transition:all .2s;min-height:36px}
+
+    /* ── UPLOAD SCREEN ── */
+    #uploadScreen{flex:1;display:flex;flex-direction:column;align-items:center;
+      justify-content:center;padding:24px 20px;gap:20px;
+      padding-bottom:calc(24px + var(--safe-bottom))}
+    .upload-title{text-align:center}
+    .upload-title h1{font-size:clamp(1.6rem,6vw,2.2rem);font-weight:800;letter-spacing:-.03em;
+      background:linear-gradient(135deg,#fff 30%,var(--accent2));-webkit-background-clip:text;
+      -webkit-text-fill-color:transparent;background-clip:text;margin-bottom:6px}
+    .upload-title p{font-size:.88rem;color:var(--muted)}
+
+    .drop-zone{width:min(480px,100%);border:2px dashed rgba(124,90,246,0.35);border-radius:20px;
+      padding:36px 24px;display:flex;flex-direction:column;align-items:center;gap:14px;
+      cursor:pointer;transition:all .3s;background:rgba(124,90,246,0.04);position:relative;
+      -webkit-user-select:none;user-select:none}
+    .drop-zone.dragover{border-color:var(--accent);background:rgba(124,90,246,0.1)}
+    .drop-icon{width:56px;height:56px;background:linear-gradient(135deg,rgba(124,90,246,0.2),rgba(56,194,212,0.15));
+      border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;
+      box-shadow:0 0 24px rgba(124,90,246,0.2)}
+    .drop-zone h2{font-size:1rem;font-weight:700;color:var(--text);text-align:center}
+    .drop-zone p{font-size:.8rem;color:var(--muted);text-align:center}
+    .drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+    .btn-browse{display:inline-flex;align-items:center;gap:7px;padding:12px 24px;border-radius:12px;
+      background:linear-gradient(135deg,var(--accent),#5b3fd0);color:#fff;font-weight:600;font-size:.88rem;
+      box-shadow:0 4px 20px rgba(124,90,246,0.4);pointer-events:none}
+
+    .format-hint{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:14px;
+      padding:16px 18px;width:min(480px,100%)}
+    .format-hint-title{font-size:.72rem;font-weight:700;color:var(--muted);letter-spacing:.06em;
+      text-transform:uppercase;margin-bottom:10px}
+    .format-hint pre{font-size:.78rem;color:#a8b3e0;line-height:1.65;font-family:monospace;overflow-x:auto}
+    .format-hint code span.key{color:#7de8f5}
+    .format-hint code span.str{color:#b8a4ff}
+    .format-hint code span.punct{color:#4a5080}
+    .hint-formats{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .hint-tag{padding:3px 9px;border-radius:20px;font-size:.68rem;font-weight:600;
+      background:rgba(56,194,212,0.12);color:var(--accent2);border:1px solid rgba(56,194,212,0.2)}
+    .btn-sample{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border-radius:10px;
+      background:rgba(56,194,212,0.08);color:var(--accent2);border:1px solid rgba(56,194,212,0.2);
+      cursor:pointer;font-family:"Inter",sans-serif;font-size:.75rem;font-weight:600;
+      transition:all .2s;margin-top:10px;min-height:38px}
+
+    .error-toast{display:none;align-items:center;gap:8px;padding:12px 16px;border-radius:12px;
+      background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.25);color:#ff8585;
+      font-size:.82rem;font-weight:500;width:min(480px,100%);animation:fadeUp .3s ease}
+    .error-toast.show{display:flex}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+    /* ── CARD SCREEN ── */
+    #cardScreen{flex:1;display:none;flex-direction:column;align-items:center;
+      justify-content:space-between;
+      padding:20px 16px calc(20px + var(--safe-bottom));gap:0}
+    #cardScreen.active{display:flex}
+
+    .card-area{flex:1;display:flex;flex-direction:column;align-items:center;
+      justify-content:center;gap:16px;width:100%;max-width:560px}
+
+    .deck-subtitle p{font-size:.82rem;color:var(--muted);text-align:center}
+
+    /* Card */
+    .card-scene{perspective:1200px;width:100%;max-width:520px;
+      height:clamp(240px,44vw,340px);cursor:pointer;touch-action:pan-y}
+    @media(max-width:430px){.card-scene{height:clamp(220px,55vw,280px)}}
+    .card{position:relative;width:100%;height:100%;transform-style:preserve-3d;
+      transition:transform .65s cubic-bezier(.4,0,.2,1);border-radius:22px;will-change:transform}
+    .card.flipped{transform:rotateY(180deg)}
+    .card-face{position:absolute;inset:0;border-radius:22px;backface-visibility:hidden;
+      -webkit-backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;
+      justify-content:center;padding:clamp(20px,5vw,36px);border:1px solid rgba(255,255,255,0.08);overflow:hidden}
+    .card-front{background:linear-gradient(145deg,#1a1060,#2d1580,#1a0a6b);
+      box-shadow:0 20px 60px rgba(0,0,0,.5),0 0 0 1px rgba(124,90,246,.15),
+        inset 0 1px 0 rgba(255,255,255,.1),0 0 50px rgba(124,90,246,.18)}
+    .card-front .card-badge{background:rgba(124,90,246,.25);color:#b8a4ff;border:1px solid rgba(124,90,246,.3)}
+    .card-back{background:linear-gradient(145deg,#0a3350,#0d5c6e,#062d44);
+      box-shadow:0 20px 60px rgba(0,0,0,.5),0 0 0 1px rgba(56,194,212,.15),
+        inset 0 1px 0 rgba(255,255,255,.1),0 0 50px rgba(56,194,212,.18);transform:rotateY(180deg)}
+    .card-back .card-badge{background:rgba(56,194,212,.2);color:#7de8f5;border:1px solid rgba(56,194,212,.3)}
+    .orb{position:absolute;border-radius:50%;filter:blur(40px);pointer-events:none}
+    .card-front .orb{width:160px;height:160px;background:rgba(124,90,246,.3);bottom:-40px;right:-40px}
+    .card-back .orb{width:160px;height:160px;background:rgba(56,194,212,.25);top:-40px;left:-40px}
+    .card-badge{display:inline-flex;align-items:center;gap:4px;font-size:.62rem;font-weight:600;
+      letter-spacing:.08em;text-transform:uppercase;padding:3px 10px;border-radius:100px;margin-bottom:10px}
+    .topic-badge{display:inline-flex;align-items:center;font-size:.62rem;font-weight:600;
+      letter-spacing:.05em;padding:2px 10px;border-radius:100px;margin-bottom:6px;
+      background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.4);border:1px solid rgba(255,255,255,0.09);
+      max-width:88%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .card-text{font-size:1.2rem;font-weight:600;text-align:center;line-height:1.5;
+      color:rgba(240,242,255,.95);position:relative;z-index:1;word-break:break-word;
+      max-width:100%;transition:font-size .15s ease}
+    @media(max-width:430px){.card-text{font-size:1rem}}
+    .card-hint{position:absolute;bottom:14px;font-size:.62rem;color:rgba(255,255,255,.28);
+      display:flex;align-items:center;gap:4px}
+    .card-counter{position:absolute;top:14px;right:16px;font-size:.65rem;
+      color:rgba(255,255,255,.22);font-weight:600}
+
+    /* Swipe hint */
+    .swipe-hint{font-size:.7rem;color:var(--muted);opacity:.5;text-align:center;
+      display:flex;align-items:center;gap:6px;justify-content:center}
+    @media(hover:hover){.swipe-hint{display:none}}
+
+    /* ── BOTTOM CONTROLS (mobile-first) ── */
+    .bottom-panel{width:100%;max-width:520px;display:flex;flex-direction:column;
+      gap:12px;padding-top:12px}
+
+    /* Answer rating row */
+    .answer-row{display:flex;gap:10px;justify-content:center;
+      animation:fadeUp .3s ease}
+    .btn-know,.btn-dontknow{flex:1;max-width:180px;display:flex;align-items:center;
+      justify-content:center;gap:6px;padding:14px 16px;border-radius:14px;border:none;
+      cursor:pointer;font-family:"Inter",sans-serif;font-size:.88rem;font-weight:700;
+      transition:all .2s;min-height:52px}
+    .btn-know{background:rgba(52,211,153,.15);color:#5df5b4;border:1px solid rgba(52,211,153,.25)}
+    .btn-know:active{background:rgba(52,211,153,.25);transform:scale(.97)}
+    .btn-dontknow{background:rgba(248,113,113,.12);color:#ff8585;border:1px solid rgba(248,113,113,.22)}
+    .btn-dontknow:active{background:rgba(248,113,113,.22);transform:scale(.97)}
+
+    /* Nav row */
+    .nav-row{display:flex;gap:10px;justify-content:center}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;
+      padding:13px 20px;border-radius:14px;border:none;cursor:pointer;
+      font-family:"Inter",sans-serif;font-size:.88rem;font-weight:600;
+      transition:all .2s;min-height:50px}
+    .btn:active{transform:scale(.96)}
+    .btn-prev{background:rgba(255,255,255,.06);color:var(--muted);
+      border:1px solid var(--border);flex:1;max-width:100px}
+    .btn-prev:active{color:var(--text)}
+    .btn-next{background:linear-gradient(135deg,var(--accent),#5b3fd0);color:#fff;
+      box-shadow:0 4px 18px rgba(124,90,246,.4);flex:2}
+    .btn-next:active{box-shadow:0 2px 10px rgba(124,90,246,.3)}
+
+    /* Stats */
+    .stats-row{display:flex;gap:10px;justify-content:center}
+    .stat-chip{display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:100px;
+      background:rgba(255,255,255,.04);border:1px solid var(--border);
+      font-size:.72rem;color:var(--muted);font-weight:500}
+    .stat-dot{width:6px;height:6px;border-radius:50%}
+    .dot-know{background:#34d399;box-shadow:0 0 5px rgba(52,211,153,.6)}
+    .dot-skip{background:#f87171;box-shadow:0 0 5px rgba(248,113,113,.5)}
+
+    /* Keyboard hint — only on desktop */
+    .kb-hint{font-size:.68rem;color:var(--muted);opacity:.5;text-align:center}
+    @media(max-width:600px){.kb-hint{display:none}}
+
+    /* ── COMPLETED ── */
+    .completed-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);
+      backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+      z-index:20;align-items:center;justify-content:center;padding:20px}
+    .completed-overlay.active{display:flex}
+    .completed-box{background:#13162a;border:1px solid var(--border);border-radius:24px;
+      padding:36px 28px;display:flex;flex-direction:column;align-items:center;gap:16px;
+      text-align:center;animation:fadeUp .4s ease;max-width:360px;width:100%}
+    .completed-icon{width:68px;height:68px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+      border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.8rem;
+      box-shadow:0 0 36px var(--glow),0 0 70px var(--glow2);animation:pulse 2s infinite}
+    @keyframes pulse{0%,100%{box-shadow:0 0 36px var(--glow),0 0 70px var(--glow2)}
+      50%{box-shadow:0 0 55px var(--glow),0 0 100px var(--glow2)}}
+    .completed-box h2{font-size:1.6rem;font-weight:800;background:linear-gradient(135deg,#fff,var(--accent2));
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .score{display:flex;gap:20px;background:rgba(255,255,255,.04);border:1px solid var(--border);
+      border-radius:14px;padding:14px 24px}
+    .score-num{font-size:1.8rem;font-weight:800}
+    .score-label{font-size:.68rem;color:var(--muted);margin-top:2px;text-align:center}
+    .score-item.good .score-num{color:#34d399}
+    .score-item.bad .score-num{color:#f87171}
+    .completed-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;width:100%}
+    .btn-restart{background:linear-gradient(135deg,var(--accent),#5b3fd0);color:#fff;
+      box-shadow:0 4px 18px rgba(124,90,246,.4);padding:13px 24px;flex:1}
+    .btn-newdeck{background:rgba(255,255,255,.06);color:var(--muted);border:1px solid var(--border);
+      padding:13px 16px;flex:1}
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🃏</div>
+      <span>FlashCards</span>
+    </div>
+    <div class="header-right">
+      <span id="deckName"></span>
+      <div class="progress-wrap" id="headerProgress" style="display:none">
+        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+        <span class="progress-text" id="progressText"></span>
+      </div>
+      <button class="btn-load-new" id="btnLoadNew" onclick="goUpload()">📂</button>
+    </div>
+  </header>
+
+  <!-- ═══ UPLOAD ═══ -->
+  <div id="uploadScreen">
+    <div class="upload-title">
+      <h1>Загрузи колоду</h1>
+      <p>Нажми или перетащи JSON-файл</p>
+    </div>
+
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" accept=".json,application/json" onchange="handleFile(this.files[0])"/>
+      <div class="drop-icon">📂</div>
+      <h2>Выбрать JSON-файл</h2>
+      <p>Поддерживается: topic, question, answer</p>
+      <div class="btn-browse">📎 Открыть файл</div>
+    </div>
+
+    <div id="errorToast" class="error-toast">⚠️ <span id="errorMsg"></span></div>
+
+    <div class="format-hint">
+      <div class="format-hint-title">📋 Формат файла</div>
+      <pre><code><span class="punct">[</span>
+  <span class="punct">{</span>
+    <span class="key">"topic"</span><span class="punct">:</span>    <span class="str">"Тема"</span><span class="punct">,</span>
+    <span class="key">"question"</span><span class="punct">:</span> <span class="str">"Вопрос?"</span><span class="punct">,</span>
+    <span class="key">"answer"</span><span class="punct">:</span>   <span class="str">"Ответ"</span>
+  <span class="punct">}</span>
+<span class="punct">]</span></code></pre>
+      <div class="hint-formats">
+        <span class="hint-tag">question / answer</span>
+        <span class="hint-tag">q / a</span>
+        <span class="hint-tag">front / back</span>
+        <span class="hint-tag">topic — опционально</span>
+      </div>
+      <button class="btn-sample" onclick="downloadSample()">⬇ Скачать пример</button>
+    </div>
+  </div>
+
+  <!-- ═══ CARD SCREEN ═══ -->
+  <div id="cardScreen">
+    <div class="card-area">
+      <div class="deck-subtitle"><p id="cardSubtitle">Нажми на карточку, чтобы увидеть ответ</p></div>
+
+      <!-- Card with swipe -->
+      <div class="card-scene" id="cardScene" onclick="handleCardClick(event)">
+        <div class="card" id="card">
+          <div class="card-face card-front">
+            <div class="orb"></div>
+            <div class="card-counter" id="cardCounter"></div>
+            <div id="topicBadgeFront" class="topic-badge" style="display:none"></div>
+            <span class="card-badge">❓ Вопрос</span>
+            <p class="card-text" id="questionText"></p>
+            <span class="card-hint">👆 Нажмите, чтобы перевернуть</span>
+          </div>
+          <div class="card-face card-back">
+            <div class="orb"></div>
+            <div class="card-counter" id="cardCounter2"></div>
+            <div id="topicBadgeBack" class="topic-badge" style="display:none"></div>
+            <span class="card-badge">💡 Ответ</span>
+            <p class="card-text" id="answerText"></p>
+            <span class="card-hint">Оцените себя ниже</span>
+          </div>
+        </div>
+      </div>
+
+      <p class="swipe-hint">← Свайп для навигации →</p>
+    </div>
+
+    <!-- Bottom panel -->
+    <div class="bottom-panel">
+      <div class="answer-row" id="answerActions" style="display:none">
+        <button class="btn-dontknow" onclick="markCard(false)">✗ Не знал</button>
+        <button class="btn-know" onclick="markCard(true)">✓ Знал!</button>
+      </div>
+
+      <div class="nav-row">
+        <button class="btn btn-prev" onclick="prevCard()">←</button>
+        <button class="btn btn-next" onclick="nextCard()">Далее →</button>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-chip"><div class="stat-dot dot-know"></div><span id="countKnow">0 знаю</span></div>
+        <div class="stat-chip"><div class="stat-dot dot-skip"></div><span id="countSkip">0 учу</span></div>
+      </div>
+
+      <p class="kb-hint">Пробел — перевернуть · ← → навигация · 1/2 — оценить</p>
+    </div>
+  </div>
+
+  <!-- ═══ COMPLETED ═══ -->
+  <div class="completed-overlay" id="completedOverlay">
+    <div class="completed-box">
+      <div class="completed-icon">🎉</div>
+      <h2>Колода завершена!</h2>
+      <p style="color:#8b92c4;font-size:.85rem">Отличная работа!</p>
+      <div class="score">
+        <div class="score-item good"><div class="score-num" id="finalKnow">0</div><div class="score-label">Знал</div></div>
+        <div class="score-item bad"><div class="score-num" id="finalSkip">0</div><div class="score-label">Учу</div></div>
+      </div>
+      <div class="completed-actions">
+        <button class="btn btn-restart" onclick="restartDeck()">🔄 Ещё раз</button>
+        <button class="btn btn-newdeck" onclick="goUpload()">📂 Новая</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>
+  let cards=[], current=0, flipped=false, known=0, learning=0, markedThisCard=false;
+
+  const uploadScreen  = document.getElementById("uploadScreen");
+  const cardScreen    = document.getElementById("cardScreen");
+  const completedOvl  = document.getElementById("completedOverlay");
+  const cardEl        = document.getElementById("card");
+  const qText         = document.getElementById("questionText");
+  const aText         = document.getElementById("answerText");
+  const progFill      = document.getElementById("progressFill");
+  const progText      = document.getElementById("progressText");
+  const answerAct     = document.getElementById("answerActions");
+  const countKnow     = document.getElementById("countKnow");
+  const countSkip     = document.getElementById("countSkip");
+  const deckNameEl    = document.getElementById("deckName");
+  const headerProg    = document.getElementById("headerProgress");
+  const btnLoadNew    = document.getElementById("btnLoadNew");
+  const cardCounter   = document.getElementById("cardCounter");
+  const cardCounter2  = document.getElementById("cardCounter2");
+  const topicFront    = document.getElementById("topicBadgeFront");
+  const topicBack     = document.getElementById("topicBadgeBack");
+  const dropZone      = document.getElementById("dropZone");
+  const fileInput     = document.getElementById("fileInput");
+  const errorToast    = document.getElementById("errorToast");
+  const errorMsg      = document.getElementById("errorMsg");
+  const cardScene     = document.getElementById("cardScene");
+
+  // ── DRAG & DROP ──
+  dropZone.addEventListener("dragover", e=>{e.preventDefault();dropZone.classList.add("dragover")});
+  dropZone.addEventListener("dragleave",()=>dropZone.classList.remove("dragover"));
+  dropZone.addEventListener("drop", e=>{
+    e.preventDefault(); dropZone.classList.remove("dragover");
+    const f=e.dataTransfer.files[0]; if(f) handleFile(f);
+  });
+
+  // ── SWIPE ──
+  let touchStartX=0, touchStartY=0, touchMoved=false;
+  cardScene.addEventListener("touchstart", e=>{
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    touchMoved = false;
+  }, {passive:true});
+  cardScene.addEventListener("touchmove", e=>{
+    const dx = Math.abs(e.touches[0].clientX - touchStartX);
+    const dy = Math.abs(e.touches[0].clientY - touchStartY);
+    if(dx > 8 || dy > 8) touchMoved = true;
+  }, {passive:true});
+  cardScene.addEventListener("touchend", e=>{
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = Math.abs(e.changedTouches[0].clientY - touchStartY);
+    if(touchMoved && dy < 60 && Math.abs(dx) > 50){
+      if(dx < 0) nextCard(); else prevCard();
+    }
+  }, {passive:true});
+
+  // Separate click from swipe
+  function handleCardClick(e){
+    if(!touchMoved) flipCard();
+  }
+
+  // ── PARSE ──
+  function parseCards(data){
+    let arr = Array.isArray(data) ? data : null;
+    if(!arr){ for(const k of Object.keys(data)){ if(Array.isArray(data[k])){ arr=data[k]; break; } } }
+    if(!arr) throw new Error("JSON должен содержать массив");
+    if(!arr.length) throw new Error("Массив пустой");
+    return arr.map((item,i)=>{
+      const q = item.question ?? item.q ?? item.front ?? item.term ?? item.word ?? null;
+      const a = item.answer   ?? item.a ?? item.back  ?? item.definition ?? null;
+      const t = item.topic    ?? item.category ?? item.section ?? item.theme ?? null;
+      if(!q||!a) throw new Error("Карточка #"+(i+1)+": не найдены вопрос/ответ");
+      return { q:String(q).trim(), a:String(a).trim(), t:t?String(t).trim():null };
+    });
+  }
+
+  function handleFile(file){
+    if(!file) return;
+    if(!file.name.endsWith(".json") && file.type!=="application/json"){
+      showError("Выберите файл .json"); return;
+    }
+    const reader = new FileReader();
+    reader.onload = e=>{
+      try{
+        const data = JSON.parse(e.target.result);
+        const parsed = parseCards(data);
+        loadDeck(parsed, file.name.replace(/\.json$/i,"").replace(/_/g," "));
+      }catch(err){ showError(err.message); }
+    };
+    reader.readAsText(file,"UTF-8");
+  }
+
+  function showError(msg){
+    errorMsg.textContent=msg; errorToast.classList.add("show");
+    setTimeout(()=>errorToast.classList.remove("show"),5000);
+  }
+
+  // ── LOAD DECK ──
+  function loadDeck(newCards, name){
+    cards=newCards; current=0; known=0; learning=0;
+    deckNameEl.textContent = name||"Колода";
+    deckNameEl.style.display="block";
+    headerProg.style.display="flex";
+    btnLoadNew.style.display="inline-flex";
+    uploadScreen.style.display="none";
+    cardScreen.classList.add("active");
+    updateCard();
+  }
+
+  function goUpload(){
+    completedOvl.classList.remove("active");
+    cardScreen.classList.remove("active");
+    uploadScreen.style.display="flex";
+    deckNameEl.style.display="none";
+    headerProg.style.display="none";
+    btnLoadNew.style.display="none";
+    fileInput.value="";
+  }
+
+  // ── FONT SIZE ──
+  function autoFontSize(el, text){
+    el.textContent = text;
+    const len = text.length;
+    const isMobile = window.innerWidth < 430;
+    const base = isMobile ? 0.9 : 1.15;
+    let scale;
+    if(len < 80)       scale = 1;
+    else if(len < 160) scale = 0.88;
+    else if(len < 300) scale = 0.78;
+    else if(len < 500) scale = 0.68;
+    else               scale = 0.6;
+    el.style.fontSize = (base * scale) + "rem";
+  }
+
+  // ── CARD LOGIC ──
+  function updateCard(){
+    const c = cards[current];
+    autoFontSize(qText, c.q);
+    autoFontSize(aText, c.a);
+    const label = (current+1)+" / "+cards.length;
+    cardCounter.textContent = label;
+    cardCounter2.textContent = label;
+    if(c.t){
+      topicFront.textContent = topicBack.textContent = "📌 "+c.t;
+      topicFront.style.display = topicBack.style.display = "inline-flex";
+    } else {
+      topicFront.style.display = topicBack.style.display = "none";
+    }
+    flipped=false; markedThisCard=false;
+    cardEl.classList.remove("flipped");
+    answerAct.style.display="none";
+    updateProgress();
+  }
+
+  function updateProgress(){
+    progFill.style.width = (current/cards.length*100)+"%";
+    progText.textContent = current+" / "+cards.length;
+    countKnow.textContent = known+" знаю";
+    countSkip.textContent = learning+" учу";
+  }
+
+  function flipCard(){
+    flipped=!flipped;
+    cardEl.classList.toggle("flipped",flipped);
+    answerAct.style.display = (flipped && !markedThisCard) ? "flex" : "none";
+  }
+
+  function markCard(didKnow){
+    if(markedThisCard) return;
+    markedThisCard=true;
+    if(didKnow) known++; else learning++;
+    answerAct.style.display="none";
+    updateProgress();
+    setTimeout(nextCard,350);
+  }
+
+  function nextCard(){ current<cards.length-1 ? (current++,updateCard()) : showCompleted(); }
+  function prevCard(){ if(current>0){ current--; updateCard(); } }
+
+  function showCompleted(){
+    document.getElementById("finalKnow").textContent=known;
+    document.getElementById("finalSkip").textContent=learning;
+    progFill.style.width="100%";
+    progText.textContent=cards.length+" / "+cards.length;
+    completedOvl.classList.add("active");
+  }
+
+  function restartDeck(){
+    current=0; known=0; learning=0;
+    completedOvl.classList.remove("active");
+    updateCard();
+  }
+
+  // ── SAMPLE ──
+  function downloadSample(){
+    const s=[
+      {"topic":"Тестирование API","question":"Что такое REST API?","answer":"Архитектурный стиль взаимодействия клиента и сервера через HTTP"},
+      {"topic":"Тестирование API","question":"Коды 4xx в HTTP?","answer":"Ошибки клиента: 400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found"},
+      {"topic":"Базы данных","question":"Что такое SQL?","answer":"Язык структурированных запросов к реляционным базам данных"},
+      {"topic":"Безопасность","question":"Что такое SQL-инъекция?","answer":"Уязвимость, позволяющая внедрить вредоносный SQL-код через пользовательский ввод"}
+    ];
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(new Blob([JSON.stringify(s,null,2)],{type:"application/json"}));
+    a.download="sample_cards.json"; a.click();
+  }
+
+  // ── KEYBOARD ──
+  document.addEventListener("keydown",e=>{
+    if(!cardScreen.classList.contains("active")) return;
+    if(e.key==="ArrowRight") nextCard();
+    if(e.key==="ArrowLeft")  prevCard();
+    if(e.key===" "){ e.preventDefault(); flipCard(); }
+    if(e.key==="1") markCard(false);
+    if(e.key==="2") markCard(true);
+  });
+</script>
+</body>
+</html>
